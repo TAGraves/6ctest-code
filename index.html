@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <button id="ipGenerator">Assign IP</button>
+    <div id="assignments"></div>
+    <script>
+    (function (root) {
+
+      function get(url) {
+        return new Promise(function (resolve, reject) {
+          var req = new XMLHttpRequest();
+          req.open('GET', url);
+          req.onload = function () {
+            if (req.status === 200) {
+              resolve(req.response);
+            } else {
+              reject(new Error(req.statusText));
+            }
+          };
+          req.onerror = function () {
+            reject(new Error('Network error'));
+          };
+          req.send();
+        });
+      }
+
+      function APIRequest() {
+        var PUBLIC_KEY = '113-C0DEBB0CEBCA5435075E';
+        var PARAMS = 'target=ipam&action=smartAssign&apiKey=' + PUBLIC_KEY + '&mask=32&rir=ARIN&resourceId=162&type=IPv4';
+
+        function requestAPI(params) {
+          var encodedParams = encodeURIComponent(params);
+          return new Promise(function (resolve, reject) {
+            get('requestIP?apiquery=' + encodedParams).then(JSON.parse).then(function (data) {
+              resolve(data);
+            }).catch(function (e) {
+              reject('Failed to access API: ' + e);
+            })
+          })
+        }
+
+        var that = this;
+        this.makeRequest = function () {
+          return new Promise(function (resolve, reject) {
+            requestAPI(PARAMS).then(function (data) {
+              if (data.success) {
+                resolve(data.data.formatted_ip);
+              } else {
+                reject(data.message);
+              }
+            }).catch(function (e) {
+              reject(e);
+            });
+          });
+        };
+
+        this.postAssignment = function (text) {
+          var div = document.createElement("div");
+          div.innerHTML = text;
+          document.getElementById('assignments').appendChild(div);
+        };
+      }
+
+      var button = document.getElementById('ipGenerator');
+      button.addEventListener('click', function (e) {
+        e.preventDefault();
+        var request = new APIRequest();
+        request.makeRequest().then(function (ip) {
+          request.postAssignment('Assigned ' + ip);
+        }).catch(function (e) {
+          request.postAssignment(e);
+        })
+      });
+    })(window);
+    </script>
+  </body>
+</html>
